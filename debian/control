@@ -1,0 +1,34 @@
+Source: libarctica-telekinesis-application-gtk3-perl
+Section: perl
+Priority: optional
+Build-Depends:
+ cdbs,
+ debhelper (>= 9),
+Build-Depends-Indep:
+ perl (>= 5.8.0),
+Maintainer: Arctica Project Developers <devs@lists.arctica-project.org>
+Uploaders:
+ Mike Gabriel <mike.gabriel@das-netzwerkteam.de>
+Homepage: https://arctica-project.org/
+Vcs-Git: https://github.com/ArcticaProject/perl-Arctica-Telekinesis-Application-Gtk3
+Vcs-Browser: https://github.com/ArcticaProject/perl-Arctica-Telekinesis-Application-Gtk3
+Standards-Version: 3.9.8
+
+Package: libarctica-telekinesis-application-gtk3-perl
+Architecture: all
+Depends:
+ ${perl:Depends},
+ ${misc:Depends},
+Description: Arctica Telekinesis support for Gtk3 applications
+ The Arctica Project brings forth a remote computing framework of
+ enterprise grade and quality. The Arctica Framework is a highly
+ modularized and thus pluggable for developing alls sort of remote
+ services.
+ .
+ The Arctica Telekinesis framework is a solution through which a visual
+ application pair is able to run with one part on the remote desktop
+ server and one part on the remote desktop client, while they visually
+ appear to the end user as one application.
+ .
+ This package provides a module for writing Telekinesis aware Gtk3
+ applications.
