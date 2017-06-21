@@ -84,6 +84,7 @@ my $arctica_core_object;
 # 4. fallback_ss (serverside rendering X embedded loop back carrier window on the server side)
 my $TEKIUNO = 0;
 
+
 sub new {
 	BugOUT(9,"TeKi AppGtk3 new->ENTER");
 	if ($TEKIUNO eq 1) {die("Yeah... you probably don't want two of these in the same application!?!");} else {$TEKIUNO = 1;}
@@ -180,6 +181,9 @@ sub _app_init {
 			$init_data->{'targets'}{$ttid}{'state'} = $self->{'targets'}{$ttid}{'state'};
 			$init_data->{'targets'}{$ttid}{'window'} = $self->{'targets'}{$ttid}{'window'};
 			$init_data->{'targets'}{$ttid}{'service'} = $self->{'targets'}{$ttid}{'service'};
+			if ($self->{'targets'}{$ttid}{'tmplnkid'}) {#TMP GARBAGE
+				$init_data->{'targets'}{$ttid}{'tmplnkid'} = $self->{'targets'}{$ttid}{'tmplnkid'};#TMP GARBAGE
+			}#TMP GARBAGE
 #			$targets->{};
 		}
 	}
@@ -208,6 +212,7 @@ sub _cinit_target {
 	$self->{'teki_socket'}->client_send('appcom',{
 		action => 'init_t',
 		tstate => $self->{'targets'}{$ttid}{'state'},
+		tmplnkid => $self->{'targets'}{$ttid}{'tmplnkid'}#TMP GARBAGE
 	});
 }
 
@@ -218,8 +223,10 @@ sub check_n_send {
 	if ($self->{'_tmp'}) {
 		print "SND\t",time,"\t:\n";
 		print Dumper($self->{'_tmp'});
+#		if ($self->{'tosock'}) {
 		if (1 eq 1) {
-			my $MODIFIED = 0;
+			my $MODIFIED = 0;# FIX ME ! REMOVE THIS
+
 			if ($self->{'_tmp'}{'w'}) {
 				foreach my $id (keys $self->{'_tmp'}{'w'}) {
 					print "\tID: $id\n";
@@ -235,6 +242,7 @@ sub check_n_send {
 								delete $self->{'_tmp'}{'w'}{$id};
 							}
 						} else {
+							$to_send{'w'}{$id}{$val} = $self->{'_tmp'}{'w'}{$id}{$val};
 							$self->{'_sent'}{'w'}{$id}{$val} = $self->{'_tmp'}{'w'}{$id}{$val};
 						}
 					}
@@ -249,6 +257,9 @@ sub check_n_send {
 			if ($self->{'_tmp'}{'t'}) {
 				foreach my $id (keys $self->{'_tmp'}{'t'}) {
 					print "\tID: $id\n";
+					if ($self->{'_tmp'}{'t'}{$id}{'w'} eq 1920) {
+						warn("YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH GOT IT!!!");
+					}
 					foreach my $val (keys $self->{'_tmp'}{'t'}{$id}) {
 						print "\t\tVAL: $val\n";
 						if ($self->{'_tmp'}{'t'}{$id}{$val} eq $self->{'_sent'}{'t'}{$id}{$val}) {
@@ -261,6 +272,7 @@ sub check_n_send {
 								delete $self->{'_tmp'}{'t'}{$id};
 							}
 						} else {
+							$to_send{'t'}{$id}{$val} = $self->{'_tmp'}{'t'}{$id}{$val};
 							$self->{'_sent'}{'t'}{$id}{$val} = $self->{'_tmp'}{'t'}{$id}{$val};
 						}
 					}
@@ -272,16 +284,23 @@ sub check_n_send {
 					delete $self->{'_tmp'}{'t'};
 				} else {$MODIFIED = 1;}
 			}
+
+			if ($self->{'_tmp'}{'force_send'} eq 1) {
+				$self->{'_tmp'}{'force_send'} = 0;
+#				%to_send = $self->{'_sent'};
+				$MODIFIED = 1;
+			}
 			if ($MODIFIED eq 1) {
-				print "\tMODIFIED!\n";
+				warn "\tMODIFIED!\n";
 				print Dumper($self->{'_tmp'});
 				$self->{'teki_socket'}->client_send('appctrl',{
 					action => 'state_change',
-					data => $self->{'_tmp'},
+					data => \%to_send,
 				});
 			} else {
 				print "\tNOT MODIFIED!\n";
 			}
+#			$self->{'tosock'}->($self->{'_tmp'});# FIX ME! ONLY DO THIS WHEN MODIFIED
 
 		}
 		$self->{'_tmp'} = undef;
@@ -310,6 +329,8 @@ sub add_window {
 	my $new_id = genARandom('id');
 	$self->{'windows'}{$new_id}{'thewindow'} = $new_window;
 	$new_window->signal_connect(event => sub {$self->_handle_window_event($_[0],$_[1],$new_id);return 0;});
+	#$new_window->signal_connect(destroy => sub { 	Gtk3->main_quit();});
+
 	return $new_id;
 }
 
@@ -331,12 +352,28 @@ sub new_target {
 		$self->{'targets'}{$new_tid}{'window'} = $wid;
 		$self->{'targets'}{$new_tid}{'widget'} = Gtk3::Socket->new;
 		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(realize => sub {print "REALIZED!!!",Dumper(@_),"XID:",
-			$self->{'targets'}{$new_tid}{'widget'}->get_id,"\n";$self->{'targets'}{$new_tid}{'realized'} = 1;return 0;});
+			$self->{'targets'}{$new_tid}{'widget'}->get_id,"\n";$self->{'targets'}{$new_tid}{'realized'} = 1;
+			unless ($self->{'targets'}{$new_tid}{'state'}{'viz'} eq 0) {$self->{'targets'}{$new_tid}{'state'}{'viz'} = 1;}
+			$self->_set_tmp('w',$wid,'geometry');
+			$self->_handle_target_geometry_event($new_tid);
+
+			return 0;});
 		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(unrealize => sub {print "UN-REALIZED WTF MAN!!!",Dumper(@_),"\n";$self->{'targets'}{$new_tid}{'realized'} = 0;return 0;});
 		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(visibility_notify_event => sub {$self->_handle_target_viz_event($new_tid,$_[1]);return 0;});
 		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(size_allocate => sub {$self->_handle_target_geometry_event($new_tid,@_);return 0;});
 		$self->{'targets'}{$new_tid}{'service'} = $target_service;
 #		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(event => sub {$self->_handle_target_event($_[0],$_[1],$new_tid);return 0;});
+
+#############################
+# WHACKY BS LIFE SIGN
+		my $bsls_timeout = Glib::Timeout->add(1000, sub {$self->{'_tmp'}{'force_send'} = 1;
+#			$self->{'_tmp'}{'alive'}{} = 1;
+			$self->{'_tmp'}{'t'}{$new_tid}{'alive'} = time;
+#			$self->_set_tmp('t',$new_tid,'geometry');
+			return 1;
+		});
+#############################
+
 		return $new_tid;
 	} else {
 		die("You need to provide the TeKi WID of a predeclared application window");
@@ -389,8 +426,15 @@ sub _set_tmp {
 				$self->{'windows'}{$id}{'state'}{'map'} = $value;
 				$self->{'_tmp'}{'w'}{$id}{'map'} = $value;
 			} elsif ($what eq 'maximized') {
-				$self->{'windows'}{$id}{'state'}{'max'} = $value;
-				$self->{'_tmp'}{'w'}{$id}{'max'} = $value;
+				warn("MAXIMIZE STATE: $value");
+#				$self->{'windows'}{$id}{'state'}{'max'} = $value;
+#				$self->{'_tmp'}{'w'}{$id}{'max'} = $value;
+				foreach my $ftid (keys $self->{'windows'}{$id}{'targets'}) {
+					warn("$id/$ftid");
+					$self->_set_tmp('w',$id,'geometry');
+				#	$self->_set_tmp('t',$ftid,'geometry');
+				}
+
 			} elsif ($what eq 'focused') {
 				$self->{'windows'}{$id}{'state'}{'focus'} = $value;
 				$self->{'_tmp'}{'w'}{$id}{'focus'} = $value;
@@ -404,10 +448,12 @@ sub _set_tmp {
 			} elsif ($what eq 'geometry') {
 				my $talloc = $self->{'targets'}{$id}{'widget'}->get_allocation;
 				my ($aX,$aY) = $self->_get_absolute_target_pos($self->{'targets'}{$id}{'widget'});
+				BugOUT(8,"POS: $aX,$aY $talloc->{'width'} $talloc->{'height'}");
 				$self->{'_tmp'}{'t'}{$id}{'x'} = $aX;
 				$self->{'_tmp'}{'t'}{$id}{'y'} = $aY;
 				$self->{'_tmp'}{'t'}{$id}{'w'} = $talloc->{'width'};
 				$self->{'_tmp'}{'t'}{$id}{'h'} =  $talloc->{'height'};
+
 				$self->{'targets'}{$id}{'state'}{'x'} = $aX;
 				$self->{'targets'}{$id}{'state'}{'y'} = $aY;
 				$self->{'targets'}{$id}{'state'}{'w'} = $talloc->{'width'};
@@ -424,35 +470,61 @@ sub _handle_window_event {
 #	Stuff that happen here should never be logged other than when explicitly doing dev work.
 	my ($self,$the_window, $event,$wid) = @_;
 #	print "TeKiPM MAINWIN\tE:\t$the_window\t",$event->type,"[TeKiEID:\t$new_id]\n";
+
 	if ($event->type eq "configure") {#Size or position change detection.
 		$self->_set_tmp('w',$wid,'geometry');
+
 	} elsif ($event->type eq "visibility-notify") {
 		# WE DON'T CARE....  TRACKING THIS INDIVIDUALY FOR EACH TARGET!
 #		print "\t\t[",$event->state,"]\n";# Change this line to use BugOUT but leave it commented out..... !!!!
+
 	} elsif ($event->type eq "map") {
 		$self->_set_tmp('w',$wid,'map',1);
 		$self->_set_tmp('w',$wid,'geometry');
 #		($self->{'windows'}{$new_id}{'state'}{'x'},$self->{'windows'}{$new_id}{'state'}{'y'}) = $the_window->get_position;
 #		 = $self->{'windows'}{$new_id}{'state'}{'x'};
 #		$self->{'_tmp'}{'w'}{$new_id}{'y'} = $self->{'windows'}{$new_id}{'state'}{'y'};
+
 	} elsif ($event->type eq "unmap") {
 		$self->_set_tmp('w',$wid,'map',0);
+
 	} elsif ($event->type eq "window-state") { 
-		if ($event->new_window_state =~ /maximized/) {
+
+		if ($event->new_window_state =~ /tiled/) {
+			warn("YAY WE ARE TILED YOHO!!!!");
+		}
+
+		if (($event->new_window_state =~ /maximized/) or ($event->new_window_state =~ /tiled/)) {
 			$self->_set_tmp('w',$wid,'maximized',1);
+			BugOUT(8,"Maximized!");
 		} else {
 			$self->_set_tmp('w',$wid,'maximized',0);
+			BugOUT(8,"Unmaximized!");
 		}
+
 		if ($event->new_window_state =~ /focused/) {
 			$self->_set_tmp('w',$wid,'focused',1);
 		} else {
 			$self->_set_tmp('w',$wid,'focused',0);
 		}
+
+		$self->_set_tmp('w',$wid,'geometry');
+		foreach my $tid (keys $self->{'windows'}{$wid}{'targets'}) {
+			my $talloc = $self->{'targets'}{$tid}{'widget'}->get_allocation;
+			print "\n\n\nTID:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: $tid\n$talloc->{'width'}:T\n\n";
+			$self->{'_tmp'}{'t'}{$tid}{'w'} = $talloc->{'width'};
+			$self->{'_tmp'}{'t'}{$tid}{'h'} =  $talloc->{'height'};
+			$self->_set_tmp('t',$tid,'geometry');
+		}
 #		$self->_set_tmp('w',$wid,'wstate',"$maximized,$focused");
+
 	} elsif ($event->type eq "delete") {
+		$self->_set_tmp('w',$wid,'map',0);
 		$self->rm_window($wid);
-		warn("You may now have orphans!?!");# FIXME: ADD SOME "IF GOT TARGER BLABALBA" HERE...
+		warn("You may now have orphans!?!");# FIX ME: ADD SOME "IF GOT TARGER BLABALBA" HERE...
+		Glib::Timeout->add(1000, sub {exit;});
 	}
+
 #	print "\n";
 	return 0;
 }
@@ -519,6 +591,5 @@ sub _get_tmp_local_socket_id {
 		die("TOTAL FAILURE! BUHUHUHHUUUUUUUUUUU!");
 	}
 }
-
 
 1;
