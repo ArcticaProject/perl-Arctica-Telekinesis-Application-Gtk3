@@ -57,7 +57,7 @@
 # Copyright (C) 2015-2016 Mike Gabriel <mike.gabriel@das-netzwerkteam.de>
 #
 ################################################################################
-package Arctica::Telekinesis::Core::AppGtk3;
+package Arctica::Telekinesis::Application::Gtk3;
 use strict;
 use Exporter qw(import);
 use Data::Dumper;
@@ -159,7 +159,7 @@ sub _appside_app_reg {
 ################################################################################
 # GTK3 RELATED STUFF
 sub _app_init {
-	BugOUT(8,"Arctica::Telekinesis::Core::Gtk3 app_init->START");
+	BugOUT(8,"Arctica::Telekinesis::Application::Gtk3 app_init->START");
 	my $self = $_[0];
 	my $init_data = {
 		action => 'app_init',
@@ -194,7 +194,7 @@ sub _app_init {
 #	});
 	$self->{'teki_socket'}->client_send('appctrl',$init_data);
 	
-	BugOUT(9,"Arctica::Telekinesis::Core::Gtk3 app_init->DONE");
+	BugOUT(9,"Arctica::Telekinesis::Application::Gtk3 app_init->DONE");
 }
 
 sub _cinit_window {
