@@ -19,6 +19,10 @@ Architecture: all
 Depends:
  ${perl:Depends},
  ${misc:Depends},
+ libarctica-core-perl,
+ libarctica-core-jabus-socket-perl,
+ libgtk3-perl,
+ libglib-object-introspection-perl,
 Description: Arctica Telekinesis support for Gtk3 applications
  The Arctica Project brings forth a remote computing framework of
  enterprise grade and quality. The Arctica Framework is a highly
