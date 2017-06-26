@@ -1,0 +1,38 @@
+2017-06-23 14:11:38 +0200 Mike Gabriel (f4720a9)
+
+	* lib/Arctica/Telekinesis/Application/Gtk3.pm: Fix occurrences of old
+          namespaces. (HEAD -> master, origin/master,
+          gh-arctica/master)
+
+2017-06-23 14:11:11 +0200 Mike Gabriel (1ab674a)
+
+	* debian/control: Add Ds (libarctica-telekinesis-application-gtk3):
+          libarctica-core-perl, libarctica-core-jabus-socket-perl,
+          libgtk3-perl, libglib-object-introspection-perl.
+
+2017-06-21 13:16:57 +0200 GZNGET FOSS Team (4883ea4)
+
+	* Update to latest development status (Arctica Browser development)
+          dating 20170621.
+
+2016-10-19 11:16:02 +0200 Mike Gabriel (5a18506)
+
+	* README.md: drop it... (origin/development, origin/HEAD,
+          development)
+
+2016-10-19 11:15:14 +0200 Mike Gabriel (9e13180)
+
+	* initial packaging draft
+
+2016-10-19 11:14:57 +0200 Mike Gabriel (fafffe8)
+
+	* Add formal Perl files.
+
+2016-10-19 11:14:25 +0200 Mike Gabriel (ff55277)
+
+	* Add Version.pm file.
+
+2016-10-18 21:45:07 +0200 GZNGET FOSS Team (972a31c)
+
+	* 1st. informal code commit
+
