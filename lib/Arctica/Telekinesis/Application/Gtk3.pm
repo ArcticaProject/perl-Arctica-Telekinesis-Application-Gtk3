@@ -65,6 +65,10 @@ use Arctica::Core::JABus::Socket;
 use Arctica::Core::eventInit qw( genARandom BugOUT );
 use Gtk3 -init;
 use Glib::Object::Introspection;
+use X11::Protocol;
+
+my $x11 = X11::Protocol->new;
+
 Glib::Object::Introspection->setup(
 	basename => "GdkX11",
 	version => "3.0",
@@ -156,10 +160,27 @@ sub _appside_app_reg {
 	BugOUT(9,"TeKi AppGtk3 Registration->DONE");
 }
 
+sub req_media_root {
+
+}
+
+sub req_file_forwarding {
+	BugOUT(9,"TeKi AppGtk3 req_file_forwarding->ENTER");
+	my $self = $_[0];
+	my $file_path = $_[1];
+	BugOUT(8,"TeKi AppGtk3 requesting forwarding of file: $file_path");
+
+	$self->{'media'}{'fwdid'} = time();
+	$self->{'media'}{'filepath'} = $file_path;
+
+	return $self->{'media'}{'fwdid'};
+	BugOUT(9,"TeKi AppGtk3 req_file_forwarding->DONE");
+}
+
 ################################################################################
 # GTK3 RELATED STUFF
 sub _app_init {
-	BugOUT(8,"Arctica::Telekinesis::Application::Gtk3 app_init->START");
+	BugOUT(8,"Arctica::Telekinesis::Core::Gtk3 app_init->START");
 	my $self = $_[0];
 	my $init_data = {
 		action => 'app_init',
@@ -182,6 +203,7 @@ sub _app_init {
 			$init_data->{'targets'}{$ttid}{'window'} = $self->{'targets'}{$ttid}{'window'};
 			$init_data->{'targets'}{$ttid}{'service'} = $self->{'targets'}{$ttid}{'service'};
 			if ($self->{'targets'}{$ttid}{'tmplnkid'}) {#TMP GARBAGE
+				$init_data->{'targets'}{$ttid}{'realwid'} = $self->{'targets'}{$ttid}{'realwid'};
 				$init_data->{'targets'}{$ttid}{'tmplnkid'} = $self->{'targets'}{$ttid}{'tmplnkid'};#TMP GARBAGE
 			}#TMP GARBAGE
 #			$targets->{};
@@ -193,8 +215,11 @@ sub _app_init {
 #		service_req => "blablabla"
 #	});
 	$self->{'teki_socket'}->client_send('appctrl',$init_data);
-	
-	BugOUT(9,"Arctica::Telekinesis::Application::Gtk3 app_init->DONE");
+	$self->{'teki_socket'}->client_send('forwardmedia',{ 
+						'path' => $self->{'media'}{'filepath'},
+						'id' => $self->{'media'}{'fwdid'}
+								});
+	BugOUT(9,"Arctica::Telekinesis::Core::Gtk3 app_init->DONE");
 }
 
 sub _cinit_window {
@@ -221,65 +246,66 @@ sub check_n_send {
 	my $self = $_[0];
 	my %to_send;
 	if ($self->{'_tmp'}) {
-		print "SND\t",time,"\t:\n";
-		print Dumper($self->{'_tmp'});
+#		print "SND\t",time,"\t:\n";
+#		print Dumper($self->{'_tmp'});
 #		if ($self->{'tosock'}) {
 		if (1 eq 1) {
-			my $MODIFIED = 0;# FIX ME ! REMOVE THIS
+			my $MODIFIED = 0;# FUCK ME ! REMOVE THIS
 
 			if ($self->{'_tmp'}{'w'}) {
 				foreach my $id (keys $self->{'_tmp'}{'w'}) {
-					print "\tID: $id\n";
+#					print "\tID: $id\n";
 					foreach my $val (keys $self->{'_tmp'}{'w'}{$id}) {
-						print "\t\tVAL: $val\n";
+#						print "\t\tVAL: $val\n";
 						if ($self->{'_tmp'}{'w'}{$id}{$val} eq $self->{'_sent'}{'w'}{$id}{$val}) {
 							delete $self->{'_tmp'}{'w'}{$id}{$val};
 
-							print "\t\t>> REMOVED W $id $val\n";
+#							print "\t\t>> REMOVED W $id $val\n";
 							my $keycnt = keys $self->{'_tmp'}{'w'}{$id};
-							print "\t\t\t>>>KEYS: $keycnt\n";
+#							print "\t\t\t>>>KEYS: $keycnt\n";
 							if ($keycnt < 1) {
 								delete $self->{'_tmp'}{'w'}{$id};
 							}
 						} else {
-							$to_send{'w'}{$id}{$val} = $self->{'_tmp'}{'w'}{$id}{$val};
+							$to_send{'w'}{$id}{$val} = $self->{'_tmp'}{'w'}{$id}{$val}; 
 							$self->{'_sent'}{'w'}{$id}{$val} = $self->{'_tmp'}{'w'}{$id}{$val};
 						}
 					}
 					
 				}
 				my $keycnt = keys $self->{'_tmp'}{'w'};
-				print "\t\t\t>>>KEYS: $keycnt\n";
+#				print "\t\t\t>>>KEYS: $keycnt\n";
 				if ($keycnt < 1) {
 					delete $self->{'_tmp'}{'w'};
 				} else {$MODIFIED = 1;}
 			}
 			if ($self->{'_tmp'}{'t'}) {
 				foreach my $id (keys $self->{'_tmp'}{'t'}) {
-					print "\tID: $id\n";
+#					print "\tID: $id\n";
+					$to_send{'t'}{$id}{'realwid'} = $self->{'targets'}{$id}{'realwid'};
 					if ($self->{'_tmp'}{'t'}{$id}{'w'} eq 1920) {
-						warn("YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH GOT IT!!!");
+#						warn("YAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH GOT IT!!!");
 					}
 					foreach my $val (keys $self->{'_tmp'}{'t'}{$id}) {
-						print "\t\tVAL: $val\n";
+#						print "\t\tVAL: $val\n";
 						if ($self->{'_tmp'}{'t'}{$id}{$val} eq $self->{'_sent'}{'t'}{$id}{$val}) {
 							delete $self->{'_tmp'}{'t'}{$id}{$val};
 
-							print "\t\t>> REMOVED T $id $val\n";
+#							print "\t\t>> REMOVED T $id $val\n";
 							my $keycnt = keys $self->{'_tmp'}{'t'}{$id};
-							print "\t\t\t>>>KEYS: $keycnt\n";
+#							print "\t\t\t>>>KEYS: $keycnt\n";
 							if ($keycnt < 1) {
 								delete $self->{'_tmp'}{'t'}{$id};
 							}
 						} else {
-							$to_send{'t'}{$id}{$val} = $self->{'_tmp'}{'t'}{$id}{$val};
+							$to_send{'t'}{$id}{$val} = $self->{'_tmp'}{'t'}{$id}{$val}; 
 							$self->{'_sent'}{'t'}{$id}{$val} = $self->{'_tmp'}{'t'}{$id}{$val};
 						}
 					}
 					
 				}
 				my $keycnt = keys $self->{'_tmp'}{'t'};
-				print "\t\t\t>>>KEYS: $keycnt\n";
+#				print "\t\t\t>>>KEYS: $keycnt\n";
 				if ($keycnt < 1) {
 					delete $self->{'_tmp'}{'t'};
 				} else {$MODIFIED = 1;}
@@ -287,18 +313,18 @@ sub check_n_send {
 
 			if ($self->{'_tmp'}{'force_send'} eq 1) {
 				$self->{'_tmp'}{'force_send'} = 0;
-#				%to_send = $self->{'_sent'};
+#				%to_send = $self->{'_sent'}; 
 				$MODIFIED = 1;
 			}
 			if ($MODIFIED eq 1) {
 				warn "\tMODIFIED!\n";
-				print Dumper($self->{'_tmp'});
+#				print Dumper($self->{'_tmp'});
 				$self->{'teki_socket'}->client_send('appctrl',{
 					action => 'state_change',
 					data => \%to_send,
 				});
 			} else {
-				print "\tNOT MODIFIED!\n";
+#				print "\tNOT MODIFIED!\n";
 			}
 #			$self->{'tosock'}->($self->{'_tmp'});# FIX ME! ONLY DO THIS WHEN MODIFIED
 
@@ -325,11 +351,11 @@ sub check_n_send {
 sub add_window {
 	my $self = $_[0];
 	my $new_window = $_[1];
-	$new_window->set_title("TeKi TRACKED");
+	#$new_window->set_title("TeKi TRACKED");
 	my $new_id = genARandom('id');
 	$self->{'windows'}{$new_id}{'thewindow'} = $new_window;
 	$new_window->signal_connect(event => sub {$self->_handle_window_event($_[0],$_[1],$new_id);return 0;});
-	#$new_window->signal_connect(destroy => sub { 	Gtk3->main_quit();});
+#$new_window->signal_connect(destroy => sub { 	Gtk3->main_quit();});
 
 	return $new_id;
 }
@@ -351,27 +377,33 @@ sub new_target {
 		$self->{'windows'}{$wid}{'targets'}{$new_tid} = 1;
 		$self->{'targets'}{$new_tid}{'window'} = $wid;
 		$self->{'targets'}{$new_tid}{'widget'} = Gtk3::Socket->new;
-		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(realize => sub {print "REALIZED!!!",Dumper(@_),"XID:",
-			$self->{'targets'}{$new_tid}{'widget'}->get_id,"\n";$self->{'targets'}{$new_tid}{'realized'} = 1;
+		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(realize => sub {
+#			print "REALIZED!!!",Dumper(@_),"XID:",	$self->{'targets'}{$new_tid}{'widget'}->get_id,"\n";
+			$self->{'targets'}{$new_tid}{'realized'} = 1;
 			unless ($self->{'targets'}{$new_tid}{'state'}{'viz'} eq 0) {$self->{'targets'}{$new_tid}{'state'}{'viz'} = 1;}
 			$self->_set_tmp('w',$wid,'geometry');
 			$self->_handle_target_geometry_event($new_tid);
-
+			my $realwid = _get_real_win($self->{'targets'}{$new_tid}{'widget'}->get_id);
+			if ($realwid ne 0) {
+				$self->{'targets'}{$new_tid}{'realwid'} = $realwid;
+				$self->{'_tmp'}{'t'}{$new_tid}{'realwid'} = $realwid;
+				$self->{'_tmp'}{'force_send'} = 1;
+			}
+				
 			return 0;});
-		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(unrealize => sub {print "UN-REALIZED WTF MAN!!!",Dumper(@_),"\n";$self->{'targets'}{$new_tid}{'realized'} = 0;return 0;});
+		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(unrealize => sub {$self->{'targets'}{$new_tid}{'realized'} = 0;return 0;});
 		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(visibility_notify_event => sub {$self->_handle_target_viz_event($new_tid,$_[1]);return 0;});
 		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(size_allocate => sub {$self->_handle_target_geometry_event($new_tid,@_);return 0;});
 		$self->{'targets'}{$new_tid}{'service'} = $target_service;
 #		$self->{'targets'}{$new_tid}{'widget'}->signal_connect(event => sub {$self->_handle_target_event($_[0],$_[1],$new_tid);return 0;});
 
-#############################
-# WHACKY BS LIFE SIGN
-		my $bsls_timeout = Glib::Timeout->add(1000, sub {$self->{'_tmp'}{'force_send'} = 1;
-#			$self->{'_tmp'}{'alive'}{} = 1;
-			$self->{'_tmp'}{'t'}{$new_tid}{'alive'} = time;
-#			$self->_set_tmp('t',$new_tid,'geometry');
-			return 1;
-		});
+###########################3
+# WHACKY BS LIFE SIGN 
+	my $bsls_timeout = Glib::Timeout->add(1000, sub {$self->{'_tmp'}{'force_send'} = 1;
+#	$self->{'_tmp'}{'alive'}{} = 1;
+	$self->{'_tmp'}{'t'}{$new_tid}{'alive'} = time;
+#$self->_set_tmp('t',$new_tid,'geometry');
+return 1;});	
 #############################
 
 		return $new_tid;
@@ -470,29 +502,24 @@ sub _handle_window_event {
 #	Stuff that happen here should never be logged other than when explicitly doing dev work.
 	my ($self,$the_window, $event,$wid) = @_;
 #	print "TeKiPM MAINWIN\tE:\t$the_window\t",$event->type,"[TeKiEID:\t$new_id]\n";
-
 	if ($event->type eq "configure") {#Size or position change detection.
 		$self->_set_tmp('w',$wid,'geometry');
-
 	} elsif ($event->type eq "visibility-notify") {
 		# WE DON'T CARE....  TRACKING THIS INDIVIDUALY FOR EACH TARGET!
 #		print "\t\t[",$event->state,"]\n";# Change this line to use BugOUT but leave it commented out..... !!!!
-
 	} elsif ($event->type eq "map") {
 		$self->_set_tmp('w',$wid,'map',1);
 		$self->_set_tmp('w',$wid,'geometry');
 #		($self->{'windows'}{$new_id}{'state'}{'x'},$self->{'windows'}{$new_id}{'state'}{'y'}) = $the_window->get_position;
 #		 = $self->{'windows'}{$new_id}{'state'}{'x'};
 #		$self->{'_tmp'}{'w'}{$new_id}{'y'} = $self->{'windows'}{$new_id}{'state'}{'y'};
-
 	} elsif ($event->type eq "unmap") {
 		$self->_set_tmp('w',$wid,'map',0);
-
 	} elsif ($event->type eq "window-state") { 
 
-		if ($event->new_window_state =~ /tiled/) {
-			warn("YAY WE ARE TILED YOHO!!!!");
-		}
+if ($event->new_window_state =~ /tiled/) {
+	warn("YAY WE ARE TILED YOHO!!!!");
+}
 
 		if (($event->new_window_state =~ /maximized/) or ($event->new_window_state =~ /tiled/)) {
 			$self->_set_tmp('w',$wid,'maximized',1);
@@ -510,21 +537,19 @@ sub _handle_window_event {
 
 		$self->_set_tmp('w',$wid,'geometry');
 		foreach my $tid (keys $self->{'windows'}{$wid}{'targets'}) {
-			my $talloc = $self->{'targets'}{$tid}{'widget'}->get_allocation;
-			print "\n\n\nTID:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: $tid\n$talloc->{'width'}:T\n\n";
-			$self->{'_tmp'}{'t'}{$tid}{'w'} = $talloc->{'width'};
-			$self->{'_tmp'}{'t'}{$tid}{'h'} =  $talloc->{'height'};
+my $talloc = $self->{'targets'}{$tid}{'widget'}->get_allocation;
+#			print "\n\n\nTID:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>: $tid\n$talloc->{'width'}:T\n\n";
+				$self->{'_tmp'}{'t'}{$tid}{'w'} = $talloc->{'width'};
+				$self->{'_tmp'}{'t'}{$tid}{'h'} =  $talloc->{'height'};
 			$self->_set_tmp('t',$tid,'geometry');
 		}
 #		$self->_set_tmp('w',$wid,'wstate',"$maximized,$focused");
-
 	} elsif ($event->type eq "delete") {
 		$self->_set_tmp('w',$wid,'map',0);
 		$self->rm_window($wid);
 		warn("You may now have orphans!?!");# FIX ME: ADD SOME "IF GOT TARGER BLABALBA" HERE...
-		Glib::Timeout->add(1000, sub {exit;});
+		 Glib::Timeout->add(1000, sub {exit;});
 	}
-
 #	print "\n";
 	return 0;
 }
@@ -569,27 +594,36 @@ sub _get_absolute_target_pos {
 	return ($absolute_x,$absolute_y);
 }
 
+################################################################################
+# TMP X11 Stuff
+sub _get_real_win {
+
+	my $xwid = $_[0];
+	my $realwin = 0;
+
+	eval {
+		$realwin =  sprintf("0x%X", unpack('l<',($x11->GetProperty($xwid, $x11->atom('NX_REAL_WINDOW'), $x11->atom('WINDOW'), 0, 4, 0))[0]));
+		$realwin = "$realwin";
+	};
+
+	return $realwin;
+
+}
 
 ################################################################################
 # FIX ME! TMP STUFF, REMOVE IN FINAL VERSION!
 sub _get_tmp_local_socket_id {
 	my $self = $_[0];
-	if (-f "$self->{'tmpdir'}/server_sockets.info") {
-		open(SIF,"$self->{'tmpdir'}/server_sockets.info");
-		my ($local_line,undef) = <SIF>;
-		close(SIF);
-		print "LL1:\t$local_line\n";
-		$local_line =~ s/[\n\s]//g;
-		print "LL2:\t$local_line\n";
-		if ($local_line =~ /^local\:([0-9a-zA-Z]*)$/) {
-			my $sock_id = $1;
-			return $sock_id;
+
+	$self->{'x11'} = X11::Protocol->new() or die("Are we even in an X11 environment?");
+	my ($teki_sock_id,undef) = $self->{'x11'}->GetProperty($self->{'x11'}->root, $self->{'x11'}->atom('TEKI_SOCKET'), $self->{'x11'}->atom('STRING'), 0, ~0, 0);
+		if ($teki_sock_id =~ /^([0-9a-zA-Z]{16,})$/) {
+			$teki_sock_id = $1;
+			return $teki_sock_id;
 		} else {
-			die("TOTAL FAILURE! BUHUHUHHUUUUUUUUUUU!");
+			die("No Telekinesis service connected to display '$ENV{'DISPLAY'}'?");
 		}
-	} else {
-		die("TOTAL FAILURE! BUHUHUHHUUUUUUUUUUU!");
-	}
+
 }
 
 1;
